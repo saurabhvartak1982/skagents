@@ -56,7 +56,7 @@ from semantic_kernel.functions import KernelArguments, kernel_function
 connection_string = "<App-Insights-Connection-String-Here>"
 
 # Create a resource to represent the service/sample
-resource = Resource.create({ResourceAttributes.SERVICE_NAME: "telemetry-application-insights-quickstart"})
+resource = Resource.create({ResourceAttributes.SERVICE_NAME: "dynamic-agent-selector"})
 
 
 def set_up_logging():
