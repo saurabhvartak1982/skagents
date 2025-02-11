@@ -1,3 +1,4 @@
 semantic-kernel
+azure-monitor-opentelemetry-exporter
 fastapi
 uvicorn
