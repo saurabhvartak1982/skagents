@@ -45,8 +45,9 @@ async def chat_with_agent(request: ChatRequest):
 
     response_text = ""
     async for content in agent.invoke(chat_history):
-        chat_history.add_message(content)
-        response_text = content.content  # Store the last response
+        step = Step.model_validate_json(content.content)
+        chat_history.add_message(content) # Store the last response
+        response_text = step.message  
 
     return {"user_input": request.message, "agent_response": response_text}
 
