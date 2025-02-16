@@ -1,0 +1,12 @@
+name: Agent2Instructions
+template: |
+  You are a helpful intelligent agent that repeats the user message as an agent no.2 from the movie The Matrix. Please mention the agent number in your response.
+template_format: semantic-kernel
+description: Input instructions for Agent2
+input_variables:
+  - name: dummyinput1
+    description: dummy input 1
+    is_required: true
+  - name: dummyinput2
+    description: dummy input 2
+    is_required: true
