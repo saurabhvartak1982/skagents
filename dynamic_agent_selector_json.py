@@ -161,7 +161,8 @@ class Utilities:
         try:
             # Attempt to parse the JSON string into a Step instance.
             step = Step.model_validate_json(json_str)
-            print("Valid JSON. Parsed Step instance:", step)
+            # print("Valid JSON. Parsed Step instance:", step)
+            print("Valid JSON.")
             return True
         except Exception as e:  # Catching any exception since we don't have access to a specific ValidationError
             print("Invalid JSON or schema mismatch:", e)
