@@ -166,7 +166,7 @@ async def main():
     )
 
     # User input
-    user_input = "I feel so serious."
+    user_input = "I feel so funny."
     chat_history = ChatHistory()
     chat_history.add_user_message(user_input)
 
