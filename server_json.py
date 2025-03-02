@@ -109,6 +109,28 @@ app = FastAPI()
 # Initialize Kernel
 kernel = Kernel()
 
+from semantic_kernel.filters.prompts.prompt_render_context import PromptRenderContext
+from semantic_kernel.filters.filter_types import FilterTypes
+import re
+
+@kernel.filter(FilterTypes.PROMPT_RENDERING)
+async def credit_card_masking_filter(context: PromptRenderContext, next):
+    """
+    Filter to mask credit card numbers in the prompt.
+    Assumes credit card numbers are exactly 16 digits long.
+    The first 12 digits are replaced with '*' and the last 4 digits are retained.
+    """
+    # Continue to the next filter or rendering step.
+    print("From the filter: Credit card masking filter")
+    await next(context)
+    
+    # Regex pattern to match a 16-digit credit card number (captures first 12 and last 4 digits).
+    pattern = re.compile(r'\b(\d{12})(\d{4})\b')
+    
+    # If there is a rendered prompt, substitute any found credit card numbers.
+    if context.rendered_prompt:
+        context.rendered_prompt = pattern.sub(lambda m: '*' * 12 + m.group(2), context.rendered_prompt)
+
 
 # Pydantic Model for Request Body
 class ChatRequest(BaseModel):
@@ -136,6 +158,23 @@ class Utilities:
         except Exception as e:  # Catching any exception since we don't have access to a specific ValidationError
             print("From the plug-in: Invalid JSON or schema mismatch:", e)
             return False
+
+    @kernel_function(description="Masks a bank account number in a given string by replacing the first six digits with asterisks, assuming the number is 10 digits long")
+    def mask_bank_account(self, input_str: str) -> str:
+        """
+        Searches for a bank account number in the given string and masks it.
+        Assumes that a bank account number is exactly 10 digits long.
+        The first 6 digits are replaced with '*' while the last 4 digits remain visible.
+        """
+        import re
+        # Regex pattern to match a 10-digit bank account number (grouping first 6 and last 4 digits)
+        pattern = re.compile(r'\b(\d{6})(\d{4})\b')
+        
+        # Replace the account number with masked version: first 6 digits are replaced with '*' 
+        masked_str = pattern.sub(lambda m: '*' * 6 + m.group(2), input_str)
+        
+        print("From the plugin: Masked account number string:", masked_str)
+        return masked_str
 
 
 @app.post("/agent1")
@@ -315,6 +354,59 @@ async def chat_with_agent(request: ChatRequest):
         response_text = content.content  
 
     return {"user_input": request.message, "agent_response": response_text}
+
+
+@app.post("/agent6")
+async def chat_with_agent(request: ChatRequest):
+    """
+    Handles user input and returns the agent6's response.
+    This version uses a prompt function so that the PROMPT_RENDERING filters (e.g. masking) are applied,
+    and it passes the agent instructions to the LLM.
+    """
+    AGENT6_SERVICEID = "agent6"
+
+    # Define your agent instructions.
+    AGENT_INSTRUCTIONS = (
+        "You are a helpful intelligent agent that repeats the user message as an agent no.6 from the movie The Matrix. "
+        "Please mention the agent number in your response. "
+        "You will invoke the LLM to fetch the response and then make use of the function mask_bank_account to mask the bank account number in the response."
+    )
+
+    # Add the Azure Chat Completion service and your utilities plugin.
+    kernel.add_service(AzureChatCompletion(service_id=AGENT6_SERVICEID))
+    kernel.add_plugin(Utilities(), plugin_name="utilities")
+    agent6Settings = kernel.get_prompt_execution_settings_from_service_id(service_id=AGENT6_SERVICEID)
+    agent6Settings.function_choice_behavior = FunctionChoiceBehavior.Auto()
+    # agent6Settings.response_format = Step
+
+    # Create a prompt function that includes placeholders for agent_instructions, chat_history, and user_input.
+    # Note the use of '$' before the variable names to indicate these are variables.
+    chat_function_agent6 = kernel.add_function(
+        plugin_name="Agent6Chat",
+        function_name="Chat",
+        prompt="{{$agent_instructions}}\n{{$chat_history}}{{$user_input}}",
+        template_format="semantic-kernel",
+        prompt_execution_settings=agent6Settings,
+    )
+
+    # Prepare the chat history.
+    chat_history = ChatHistory()
+    chat_history.add_user_message(request.message)
+
+    # When invoking, pass the agent_instructions along with chat_history and user_input.
+    result = await kernel.invoke(
+        chat_function_agent6,
+        KernelArguments(
+            chat_history=chat_history,
+            user_input=request.message,
+            agent_instructions=AGENT_INSTRUCTIONS,
+        )
+    )
+
+    # The rendered prompt (with filtering applied) is used by the LLM and the final response is returned.
+    return {"user_input": request.message, "agent_response": str(result)}
+
+
 
 
 
